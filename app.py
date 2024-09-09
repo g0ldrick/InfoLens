@@ -2,7 +2,7 @@
 import streamlit as st
 from streamlit_lottie import st_lottie
 import requests
-from backend import connect_to_db, add_user, authenticate_user
+from backend import connect_to_db, add_user, authenticate_user, make_prediction
 
 # Function to load Lottie animations from hosted URL
 def load_lottie_url(url: str):
@@ -35,6 +35,31 @@ def home():
     st_lottie(lottie_animation, height=300, key="disinformation_animation")
     st.write("""Use the navigation bar on the left to explore different features of the application, sign up
         for an account and log in if you wish to make predictions on text.""")
+
+
+def predict():
+    st.title("Make a Prediction")
+
+    # Text area for user to input the text for prediction
+    user_input = st.text_area("Enter text to analyze", placeholder="Type your text here...")
+
+    if st.button("Classify"):
+        if user_input:  # Check if the input is not empty
+            # Call the function to make prediction using the input text
+            result = make_prediction(user_input)
+
+            # Map the result: 0 -> "true", 1 -> "false"
+            if result == 0:
+                prediction = "true"
+            elif result == 1:
+                prediction = "false"
+            else:
+                prediction = "Unknown"  # Add this in case the result is not 0 or 1
+
+            st.write(f"Prediction: {prediction}")
+        else:
+            st.warning("Please enter some text before clicking Classify.")
+    
 
 def signup():
     st.title("Sign Up")

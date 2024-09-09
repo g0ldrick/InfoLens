@@ -2,6 +2,38 @@
 from pymongo import MongoClient
 import bcrypt
 import streamlit as st
+import joblib
+from transformers import DistilBertTokenizer, DistilBertModel
+import torch
+
+# Load the pre-trained model
+@st.cache_resource
+def load_model():
+    return joblib.load('models/XGB.pkl')
+
+model = load_model()
+
+# Function to make predictions
+def predict(text_embedding):
+    return model.predict(text_embedding)
+
+# Load the pre-trained DistilBERT model and tokenizer
+tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+distilbert_model = DistilBertModel.from_pretrained('distilbert-base-uncased')
+
+# Function to embed text using DistilBERT
+def embed_text(text):
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+    with torch.no_grad():
+        outputs = distilbert_model(**inputs)
+    return outputs.last_hidden_state.mean(dim=1)  # Embedding from the last hidden state
+
+# Make predictions
+def make_prediction(input_text):
+    embedding = embed_text(input_text)  # Embed the input text
+    prediction = predict(embedding.numpy())  # Make prediction using the loaded model
+    return prediction
+
 
 # Connect to MongoDB
 def connect_to_db():

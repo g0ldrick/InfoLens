@@ -2,3 +2,6 @@ streamlit
 streamlit-lottie
 pymongo
 bcrypt
+torch
+joblib
+requests
