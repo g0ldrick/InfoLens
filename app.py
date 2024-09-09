@@ -50,7 +50,7 @@ def home():
             st.error(st.session_state["message"])  # logout message in red
         else:
             st.success(st.session_state["message"])  # other messages in green
-        st.session_state["message"] = ""  # clear message on next navigation 
+        st.session_state["message"] = ""  # clear message on next page navigation 
     st.title("Welcome to InfoLens!")
     st.write("""
         Welcome to InfoLens, a powerful tool for disinformation detection designed to empower the individual 
@@ -61,6 +61,17 @@ def home():
     st_lottie(lottie_animation, height=300, key="disinformation_animation")
     st.write("""Use the navigation bar on the left to explore different features of the application, sign up
         for an account and log in if you wish to make predictions on text.""")
+    
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("Sign Up"):
+            st.session_state.current_page = "Sign Up"
+            st.rerun()
+
+    with col2:
+        if st.button("Log In"):
+            st.session_state.current_page = "Log In"
+            st.rerun()
 
 def predict():
     '''Main page for text input from user and prediction to be displayed'''
