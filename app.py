@@ -16,7 +16,6 @@ password = st.secrets["mongo"]["password"]
 cluster_url = st.secrets["mongo"]["cluster_url"]
 db_name = st.secrets["mongo"]["db_name"]
 
-# Replace with your MongoDB connection string
 MONGO_URI = f"mongodb+srv://{username}:{password}@{cluster_url}/{db_name}?retryWrites=true&w=majority"
 
 
