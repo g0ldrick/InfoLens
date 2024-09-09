@@ -36,19 +36,6 @@ def home():
     st.write("""Use the navigation bar on the left to explore different features of the application, sign up
         for an account and log in if you wish to make predictions on text.""")
 
-    # Place the buttons with minimal space between them
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        if st.button("Sign Up"):
-            st.session_state.current_page = "Sign Up"
-            st.rerun()
-
-    with col2:
-        if st.button("Log In"):
-            st.session_state.current_page = "Log In"
-            st.rerun()
-
 def signup():
     st.title("Sign Up")
 
