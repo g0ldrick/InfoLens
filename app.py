@@ -12,7 +12,7 @@ from streamlit_cookies_manager import EncryptedCookieManager
 app = Flask(__name__)
 
 # Configure Streamlit's cookie manager
-cookies = EncryptedCookieManager(password=st.secrets["secret_password"])
+cookies = EncryptedCookieManager(password=st.secrets["app-secrets"]["secret_password"])
 
 if not cookies.ready():
     st.stop()
@@ -104,7 +104,7 @@ def configure_email():
 
 # Generate confirmation token
 def generate_confirmation_token(email):
-    serializer = URLSafeTimedSerializer(st.secrets["secret_key"])  # Using the secret key
+    serializer = URLSafeTimedSerializer(st.secrets["app-secrets"]["secret_key"])  # Using the secret key
     return serializer.dumps(email, salt="email-confirm-salt")
 
 # Send confirmation email
@@ -123,7 +123,7 @@ def send_confirmation_email(user_email):
 # Confirm email from token
 def confirm_email(token):
     try:
-        serializer = URLSafeTimedSerializer(st.secrets["secret_key"])
+        serializer = URLSafeTimedSerializer(st.secrets["app-secrets"]["secret_key"])
         email = serializer.loads(token, salt="email-confirm-salt", max_age=3600)
         db = connect_to_db()
         db["users"].update_one({"email": email}, {"$set": {"confirmed": True}})
