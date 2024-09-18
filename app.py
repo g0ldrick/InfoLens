@@ -196,7 +196,7 @@ def main():
         token = query_params["token"][0]
         confirm_email(token)  # Call the token validation function
         st.session_state.token_processed = True  # Ensure the token is processed only once
-        st.experimental_set_query_params(**{})  # Clear the token from the URL after processing
+        st.set_query_params()  # Clear the token from the URL after processing
 
     check_login()
 
