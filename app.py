@@ -1,20 +1,19 @@
-# app.py
 import streamlit as st
 from streamlit_lottie import st_lottie
 import requests
 import bcrypt
 from pymongo import MongoClient
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from streamlit_cookies_manager import EncryptedCookieManager
 
 # Create a Cookie Manager
-cookies = EncryptedCookieManager(
-    password="your_secret_password",  # You should change this password
-)
+cookies = EncryptedCookieManager(password="your_secret_password")  # Replace with your password
 
 if not cookies.ready():
     st.stop()
 
-# Function to load Lottie animations from a hosted URL
+# Function to load Lottie animations from hosted URL
 def load_lottie_url(url: str):
     r = requests.get(url)
     if r.status_code != 200:
@@ -52,142 +51,77 @@ def add_user(db, first_name, email, password):
     new_user = {
         "name": first_name,
         "email": email,
-        "password": hash_password(password)
+        "password": hash_password(password),
+        "confirmed": False  # Email confirmation status
     }
     users_collection.insert_one(new_user)
-    return True, "Signed up successfully!"
+    return True, "Signed up successfully! Please confirm your email."
 
 # Authenticate an existing user
 def authenticate_user(db, email, password):
     users_collection = db["users"]
     user = users_collection.find_one({"email": email})
+
+    if not user["confirmed"]:
+        return False, "Please confirm your email address before logging in."
     
     if user and verify_password(user["password"], password):
         return True, user["name"]
     
     return False, "Invalid email or password."
 
-# Function to make API requests to your Cloud Run API
-def make_prediction_via_api(text, model="cnn"):
-    api_url = "https://infolens-ml-api-3vvr7n346a-nw.a.run.app/predict"
-    payload = {
-        "text": text,
-        "model": model  # You can change model if needed
-    }
-    try:
-        response = requests.post(api_url, json=payload)
-        response.raise_for_status()
-        result = response.json().get("prediction", "Unknown")
-        return result
-    except requests.exceptions.RequestException as e:
-        return f"Error: {str(e)}"
+# Email validation using AbstractAPI
+def validate_email_api(email):
+    api_key = st.secrets["abstractapi"]["api_key"]
+    url = f"https://emailvalidation.abstractapi.com/v1/?api_key={api_key}&email={email}"
 
-# Check if user is logged in based on cookies
-def check_login():
-    # Retrieve session state from cookies
-    logged_in = cookies.get("logged_in")
-    user_name = cookies.get("user_name")
+    response = requests.get(url)
+    data = response.json()
 
-    if logged_in == "True":
-        st.session_state.logged_in = True
-        st.session_state.user_name = user_name
+    if 'is_valid_format' in data and data['is_valid_format']['value']:
+        return True
     else:
-        st.session_state.logged_in = False
+        return False
 
-# Set login session and store in cookies
-def set_login_session(user_name):
-    st.session_state.logged_in = True
-    st.session_state.user_name = user_name
-    cookies["logged_in"] = "True"
-    cookies["user_name"] = user_name
-    cookies.save()
+# Configure Flask-Mail for sending emails
+def configure_email():
+    mail = Mail()
+    mail.server = st.secrets["email"]["smtp_server"]
+    mail.port = st.secrets["email"]["smtp_port"]
+    mail.use_tls = True
+    mail.username = st.secrets["email"]["username"]
+    mail.password = st.secrets["email"]["password"]
+    return mail
 
-# Clear login session
-def clear_login_session():
-    st.session_state.logged_in = False
-    st.session_state.user_name = ""
-    cookies["logged_in"] = "False"
-    cookies["user_name"] = ""
-    cookies.save()
+# Generate confirmation token
+def generate_confirmation_token(email):
+    serializer = URLSafeTimedSerializer("your_secret_key")
+    return serializer.dumps(email, salt="email-confirm-salt")
 
-# Home page content
-def home():
-    if "message" in st.session_state and st.session_state["message"]:
-        if "logged out" in st.session_state["message"].lower():
-            st.error(st.session_state["message"])  # logout message in red
-        else:
-            st.success(st.session_state["message"])  # other messages in green
-        st.session_state["message"] = ""  # clear message on next page navigation
+# Send confirmation email
+def send_confirmation_email(user_email):
+    mail = configure_email()
+    token = generate_confirmation_token(user_email)
+    confirm_url = f"https://yourapp.com/confirm/{token}"
 
-    st.title("Welcome to InfoLens!")
-    st.write("""
-        Welcome to InfoLens, a powerful tool for disinformation detection designed to empower individuals 
-        by helping you assess the veracity of textual content you find online. In the era of pervasive
-        misinformation and disinformation, it's important to evaluate the truthfulness of what you read online.\n
-    """)
-    st_lottie(lottie_animation, height=300, key="disinformation_animation")
-    st.write("""Use the navigation bar on the left to explore different features of the application. 
-        You can sign up for an account or log in to make predictions on textual content.""")
+    msg = Message("Confirm Your Email Address", sender=st.secrets["email"]["username"], recipients=[user_email])
+    msg.body = f"Hi! Please confirm your email address by clicking this link: {confirm_url}"
+    mail.send(msg)
 
-# Prediction page
-def predict():
-    st.title("Make a Prediction")
-
-    # Text area for user to input the text for prediction
-    user_input = st.text_area("Enter text to analyze", placeholder="Type your text here...")
-
-    if st.button("Classify", key="classify_button"):
-        if user_input:  # Check if input is not empty
-            result = make_prediction_via_api(user_input)  # Call the API for prediction
-            
-            # Display the appropriate message based on the prediction
-            if result == 1:
-                st.write("Response from our classification model indicates that this information is **FALSE**.")
-            elif result == 0:
-                st.write("Response from our classification model indicates that this information is **TRUE**.")
-            else:
-                st.write("Unable to classify the information.")
-        else:
-            st.warning("Please enter some text before clicking Classify.")
-
-# Signup page
-def signup():
-    st.title("Sign Up")
-
-    first_name = st.text_input("First Name")
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
-
-    if st.button("Sign Up", key="signup_button"):
+# Confirm email from token
+def confirm_email(token):
+    try:
+        serializer = URLSafeTimedSerializer("your_secret_key")
+        email = serializer.loads(token, salt="email-confirm-salt", max_age=3600)  # 1 hour expiry
         db = connect_to_db()
-        success, message = add_user(db, first_name, email, password)
-        if success:
-            st.session_state["message"] = message
-            set_login_session(first_name)  # Set login session for the new user
-            st.session_state.current_page = "Home"
-            st.rerun()
-        else:
-            st.error(message)
+        db["users"].update_one({"email": email}, {"$set": {"confirmed": True}})
+        st.success("Email confirmed successfully!")
+    except SignatureExpired:
+        st.error("The confirmation link has expired.")
+    except BadSignature:
+        st.error("Invalid confirmation link.")
 
-# Login page
-def login():
-    st.title("Log In")
-
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
-
-    if st.button("Log In", key="login_button"):
-        db = connect_to_db()
-        success, user_name = authenticate_user(db, email, password)
-        if success:
-            st.session_state["message"] = f"Logged in as {user_name}"
-            set_login_session(user_name)  # Set login session
-            st.session_state.current_page = "Home"
-            st.rerun()
-        else:
-            st.error(user_name)
-
-# Main function to handle navigation and session state
+# Main app navigation and session state
 def main():
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
@@ -198,7 +132,7 @@ def main():
     if "current_page" not in st.session_state:
         st.session_state.current_page = "Home"
 
-    # Check login session in cookies
+    # Check if user is logged in using cookies
     check_login()
 
     st.sidebar.title("Navigation")
@@ -229,6 +163,79 @@ def main():
         login()
     elif st.session_state.current_page == "Sign Up" and not st.session_state.logged_in:
         signup()
+
+# Home page content
+def home():
+    st.title("Welcome to InfoLens!")
+    st.write("This app detects disinformation. Use the navigation bar to sign up or log in.")
+    st_lottie(lottie_animation, height=300, key="disinformation_animation")
+
+# Prediction page
+def predict():
+    st.title("Make a Prediction")
+    user_input = st.text_area("Enter text to analyze", placeholder="Type your text here...")
+
+    if st.button("Classify", key="classify_button"):
+        if user_input:
+            result = make_prediction_via_api(user_input)
+            if result == 1:
+                st.write("Response from our classification model indicates that this information is **FALSE**.")
+            elif result == 0:
+                st.write("Response from our classification model indicates that this information is **TRUE**.")
+        else:
+            st.warning("Please enter some text before clicking Classify.")
+
+# Signup page
+def signup():
+    st.title("Sign Up")
+
+    first_name = st.text_input("First Name")
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Sign Up", key="signup_button"):
+        if not validate_email_api(email):
+            st.error("Please enter a valid email address.")
+        else:
+            db = connect_to_db()
+            success, message = add_user(db, first_name, email, password)
+            if success:
+                send_confirmation_email(email)
+                st.success("Confirmation email sent. Please check your inbox.")
+                st.session_state.current_page = "Home"
+                st.rerun()
+            else:
+                st.error(message)
+
+# Login page
+def login():
+    st.title("Log In")
+
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Log In", key="login_button"):
+        db = connect_to_db()
+        success, user_name = authenticate_user(db, email, password)
+        if success:
+            st.session_state["message"] = f"Logged in as {user_name}"
+            st.session_state.logged_in = True
+            st.session_state.current_page = "Home"
+            st.rerun()
+        else:
+            st.error(user_name)
+
+# Function to make API requests to your Cloud Run API
+def make_prediction_via_api(text, model="cnn"):
+    api_url = "https://infolens-ml-api-3vvr7n346a-nw.a.run.app/predict"
+    payload = {"text": text, "model": model}
+    try:
+        response = requests.post(api_url, json=payload)
+        response.raise_for_status()
+        result = response.json().get("prediction", "Unknown")
+        return result
+    except requests.exceptions.RequestException as e:
+        return f"Error: {str(e)}"
 
 if __name__ == "__main__":
     main()
