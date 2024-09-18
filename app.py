@@ -174,7 +174,7 @@ def profile():
         
         st.success("Your account has been deleted.")
         clear_login_session()
-        st.experimental_rerun()
+        st.rerun()
 
 # Main app navigation and session state
 def main():
@@ -211,7 +211,7 @@ def main():
             clear_login_session()
             st.session_state.current_page = "Home"
             st.session_state["message"] = "Logged out successfully!"
-            st.experimental_rerun()
+            st.rerun()
     else:
         if st.sidebar.button("Log In", key="login_button_sidebar"):
             st.session_state.current_page = "Log In"
@@ -267,7 +267,7 @@ def signup():
         if not validate_email_api(email):
             st.session_state.current_page = "Sign Up"
             st.error("Email is not valid, please use a valid email address.")
-            st.experimental_rerun()
+            st.rerun()
         else:
             db = connect_to_db()
             success, message = add_user(db, first_name, email, password)
@@ -275,7 +275,7 @@ def signup():
                 send_confirmation_email(email)
                 st.success("Confirmation email sent. Please check your inbox.")
                 st.session_state.current_page = "Home"
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error(message)
 
@@ -304,7 +304,7 @@ def login():
             cookies.save()
 
             # Rerun to ensure the page updates
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error(user_name)
 
