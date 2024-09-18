@@ -189,11 +189,13 @@ def main():
     if "current_page" not in st.session_state:
         st.session_state.current_page = "Home"
 
-    # Handle the email confirmation token
+    # Handle the email confirmation token only if it exists and hasn't been processed yet
     query_params = st.experimental_get_query_params()
-    if "token" in query_params:
+    if "token" in query_params and "token_processed" not in st.session_state:
         token = query_params["token"][0]
         confirm_email(token)  # Call the token validation function
+        st.session_state.token_processed = True  # Ensure the token is processed only once
+        st.experimental_set_query_params()  # Clear the token from the URL after processing
 
     check_login()
 
