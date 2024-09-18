@@ -250,10 +250,14 @@ def home():
 def predict():
     st.title("Make a Prediction")
     user_input = st.text_area("Enter text to analyze", placeholder="Type your text here...")
+    
+    # Dropdown for selecting model
+    model_options = ["cnn", "mlp", "xgb", "svm", "random_forest", "knn"]
+    selected_model = st.selectbox("Select model", model_options, index=model_options.index("cnn"))
 
     if st.button("Classify", key="classify_button"):
         if user_input:
-            result = make_prediction_via_api(user_input)
+            result = make_prediction_via_api(user_input, selected_model)
             if result == 1:
                 st.write("Response from our classification model indicates that this information is **FALSE**.")
             elif result == 0:
