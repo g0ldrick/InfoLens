@@ -136,7 +136,7 @@ def predict():
     # Text area for user to input the text for prediction
     user_input = st.text_area("Enter text to analyze", placeholder="Type your text here...")
 
-    if st.button("Classify"):
+    if st.button("Classify", key="classify_button"):
         if user_input:  # Check if input is not empty
             result = make_prediction_via_api(user_input)  # Call the API for prediction
             st.write(f"Prediction: {result}")
@@ -151,7 +151,7 @@ def signup():
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
 
-    if st.button("Sign Up"):
+    if st.button("Sign Up", key="signup_button"):
         db = connect_to_db()
         success, message = add_user(db, first_name, email, password)
         if success:
@@ -169,7 +169,7 @@ def login():
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
 
-    if st.button("Log In"):
+    if st.button("Log In", key="login_button"):
         db = connect_to_db()
         success, user_name = authenticate_user(db, email, password)
         if success:
@@ -196,21 +196,21 @@ def main():
 
     st.sidebar.title("Navigation")
 
-    if st.sidebar.button("Home"):
+    if st.sidebar.button("Home", key="home_button_sidebar"):
         st.session_state.current_page = "Home"
 
     if st.session_state.logged_in:
-        if st.sidebar.button("Predict"):
+        if st.sidebar.button("Predict", key="predict_button_sidebar"):
             st.session_state.current_page = "Predict"
-        if st.sidebar.button("Log Out"):
+        if st.sidebar.button("Log Out", key="logout_button_sidebar"):
             clear_login_session()  # Clear session on log out
             st.session_state.current_page = "Home"
             st.session_state["message"] = "Logged out successfully!"
             st.rerun()
     else:
-        if st.sidebar.button("Log In"):
+        if st.sidebar.button("Log In", key="login_button_sidebar"):
             st.session_state.current_page = "Log In"
-        if st.sidebar.button("Sign Up"):
+        if st.sidebar.button("Sign Up", key="signup_button_sidebar"):
             st.session_state.current_page = "Sign Up"
 
     # Display the appropriate page

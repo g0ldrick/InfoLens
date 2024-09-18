@@ -1,5 +1,6 @@
 streamlit
 streamlit-lottie
+streamlit-cookies-manager
 pymongo
 bcrypt
 torch
