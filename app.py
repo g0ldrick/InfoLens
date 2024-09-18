@@ -12,7 +12,7 @@ from streamlit_cookies_manager import EncryptedCookieManager
 app = Flask(__name__)
 
 # Configure Streamlit's cookie manager
-cookies = EncryptedCookieManager(password="your_secret_password")  # Replace with your password
+cookies = EncryptedCookieManager(password=st.secrets["secret_password"])
 
 if not cookies.ready():
     st.stop()
@@ -83,7 +83,6 @@ def validate_email_api(email):
         response = requests.get(url)
         data = response.json()
 
-        # Check if the email is valid
         if data.get('is_valid_format', {}).get('value') and data.get('is_smtp_valid', False):
             return True
         else:
@@ -105,7 +104,7 @@ def configure_email():
 
 # Generate confirmation token
 def generate_confirmation_token(email):
-    serializer = URLSafeTimedSerializer("your_secret_key")
+    serializer = URLSafeTimedSerializer(st.secrets["secret_key"])  # Using the secret key
     return serializer.dumps(email, salt="email-confirm-salt")
 
 # Send confirmation email
@@ -118,19 +117,18 @@ def send_confirmation_email(user_email):
     msg = Message("Confirm Your Email Address", sender=st.secrets["email"]["username"], recipients=[user_email])
     msg.body = f"Hi! Please confirm your email address by clicking this link: {confirm_url}"
 
-    # Use Flask's application context when sending the email
     with app.app_context():
         mail.send(msg)
 
 # Confirm email from token
 def confirm_email(token):
     try:
-        serializer = URLSafeTimedSerializer("your_secret_key")
-        email = serializer.loads(token, salt="email-confirm-salt", max_age=3600)  # 1 hour expiry
+        serializer = URLSafeTimedSerializer(st.secrets["secret_key"])
+        email = serializer.loads(token, salt="email-confirm-salt", max_age=3600)
         db = connect_to_db()
         db["users"].update_one({"email": email}, {"$set": {"confirmed": True}})
         st.success("Email confirmed successfully! You are now signed in.")
-        st.session_state.logged_in = True  # Automatically log the user in
+        st.session_state.logged_in = True
     except SignatureExpired:
         st.error("The confirmation link has expired.")
     except BadSignature:
@@ -138,7 +136,6 @@ def confirm_email(token):
 
 # Check if user is logged in based on cookies
 def check_login():
-    # Retrieve session state from cookies
     logged_in = cookies.get("logged_in")
     user_name = cookies.get("user_name")
 
@@ -154,7 +151,30 @@ def clear_login_session():
     st.session_state.user_name = ""
     cookies["logged_in"] = "False"
     cookies["user_name"] = ""
-    cookies.save()  # Ensure cookies are saved
+    cookies.save()
+
+# Profile page with Delete Account button
+def profile():
+    st.title("Profile")
+
+    if st.session_state.get("user_name"):
+        st.write(f"Welcome, {st.session_state['user_name']}!")
+    
+    st.write("### Delete your account")
+    st.warning("Deleting your account will permanently remove all of your data.")
+
+    confirmation_text = st.text_input("Type 'DELETE' to confirm", "")
+    delete_button_disabled = confirmation_text != 'DELETE'
+    delete_confirm_button = st.button("Delete Account", disabled=delete_button_disabled)
+
+    if delete_confirm_button:
+        db = connect_to_db()
+        users_collection = db["users"]
+        users_collection.delete_one({"email": st.session_state["email"]})
+        
+        st.success("Your account has been deleted.")
+        clear_login_session()
+        st.experimental_rerun()
 
 # Main app navigation and session state
 def main():
@@ -167,7 +187,6 @@ def main():
     if "current_page" not in st.session_state:
         st.session_state.current_page = "Home"
 
-    # Check if user is logged in using cookies
     check_login()
 
     st.sidebar.title("Navigation")
@@ -176,10 +195,10 @@ def main():
         st.session_state.current_page = "Home"
 
     if st.session_state.logged_in:
-        if st.sidebar.button("Predict", key="predict_button_sidebar"):
-            st.session_state.current_page = "Predict"
+        if st.sidebar.button("Profile", key="profile_button_sidebar"):
+            st.session_state.current_page = "Profile"
         if st.sidebar.button("Log Out", key="logout_button_sidebar"):
-            clear_login_session()  # Clear session on log out
+            clear_login_session()
             st.session_state.current_page = "Home"
             st.session_state["message"] = "Logged out successfully!"
             st.rerun()
@@ -189,11 +208,12 @@ def main():
         if st.sidebar.button("Sign Up", key="signup_button_sidebar"):
             st.session_state.current_page = "Sign Up"
 
-    # Display the appropriate page
     if st.session_state.current_page == "Home":
         home()
     elif st.session_state.current_page == "Predict" and st.session_state.logged_in:
         predict()
+    elif st.session_state.current_page == "Profile" and st.session_state.logged_in:
+        profile()
     elif st.session_state.current_page == "Log In" and not st.session_state.logged_in:
         login()
     elif st.session_state.current_page == "Sign Up" and not st.session_state.logged_in:
@@ -229,7 +249,6 @@ def signup():
     password = st.text_input("Password", type="password")
 
     if st.button("Sign Up", key="signup_button"):
-        # Validate email format before allowing signup
         if not validate_email_api(email):
             st.session_state.current_page = "Sign Up"
             st.error("Email is not valid, please use a valid email address.")
