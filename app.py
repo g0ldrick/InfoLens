@@ -294,14 +294,22 @@ def login():
             st.session_state["message"] = f"Logged in as {user_name}"
             st.session_state.logged_in = True
             st.session_state.user_name = user_name
-            st.session_state.current_page = "Home"
+            st.session_state.current_page = "Profile"  # Change page to Profile or any other logged-in page
+
+            # Save cookies
+            cookies["logged_in"] = "True"
+            cookies["user_name"] = user_name
+            cookies.save()
 
             # Optionally print session state to verify it's updated correctly
             st.write("Session state after login:", st.session_state)
 
+            # Rerun to ensure the page updates
+            st.experimental_rerun()
         else:
             st.error(user_name)
             st.write(f"Login failed, reason: {user_name}")
+
 
 
 
