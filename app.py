@@ -66,10 +66,13 @@ def authenticate_user(db, email, password):
     users_collection = db["users"]
     user = users_collection.find_one({"email": email})
 
+    if not user:  # Check if user exists
+        return False, "User does not exist."
+
     if not user["confirmed"]:
         return False, "Please confirm your email address before logging in."
     
-    if user and verify_password(user["password"], password):
+    if verify_password(user["password"], password):
         return True, user["name"]
     
     return False, "Invalid email or password."
