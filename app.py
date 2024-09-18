@@ -127,9 +127,9 @@ def confirm_email(token):
         email = serializer.loads(token, salt="email-confirm-salt", max_age=3600)
         db = connect_to_db()
         db["users"].update_one({"email": email}, {"$set": {"confirmed": True}})
-        st.success("Email confirmed successfully! You are now signed in.")
+        st.session_state.confirm_message = "Email confirmed successfully!"  # Store message in session state
         st.session_state.logged_in = True
-        st.session_state.user_name = email  # Save the email in session state
+        st.session_state.user_name = email
     except SignatureExpired:
         st.error("The confirmation link has expired.")
     except BadSignature:
@@ -150,6 +150,7 @@ def check_login():
 def clear_login_session():
     st.session_state.logged_in = False
     st.session_state.user_name = ""
+    st.session_state.confirm_message = ""  # Clear confirmation message
     cookies["logged_in"] = "False"
     cookies["user_name"] = ""
     cookies.save()
@@ -188,13 +189,13 @@ def main():
     if "current_page" not in st.session_state:
         st.session_state.current_page = "Home"
 
-    check_login()
-
-    # Extract token from URL
+    # Handle the email confirmation token
     query_params = st.experimental_get_query_params()
     if "token" in query_params:
         token = query_params["token"][0]
         confirm_email(token)  # Call the token validation function
+
+    check_login()
 
     st.sidebar.title("Navigation")
 
@@ -229,6 +230,11 @@ def main():
 # Home page content
 def home():
     st.title("Welcome to InfoLens!")
+    
+    # Display the confirmation message if it exists
+    if "confirm_message" in st.session_state and st.session_state.confirm_message:
+        st.success(st.session_state.confirm_message)
+    
     st.write("This app detects disinformation. Use the navigation bar to sign up or log in.")
     st_lottie(lottie_animation, height=300, key="disinformation_animation")
 
