@@ -139,7 +139,14 @@ def predict():
     if st.button("Classify", key="classify_button"):
         if user_input:  # Check if input is not empty
             result = make_prediction_via_api(user_input)  # Call the API for prediction
-            st.write(f"Prediction: {result}")
+            
+            # Display the appropriate message based on the prediction
+            if result == 1:
+                st.write("Response from our classification model indicates that this information is **FALSE**.")
+            elif result == 0:
+                st.write("Response from our classification model indicates that this information is **TRUE**.")
+            else:
+                st.write("Unable to classify the information.")
         else:
             st.warning("Please enter some text before clicking Classify.")
 
