@@ -133,6 +133,14 @@ def check_login():
     else:
         st.session_state.logged_in = False
 
+# Clear login session and cookies on logout
+def clear_login_session():
+    st.session_state.logged_in = False
+    st.session_state.user_name = ""
+    cookies["logged_in"] = "False"
+    cookies["user_name"] = ""
+    cookies.save()  # Ensure cookies are saved
+
 # Main app navigation and session state
 def main():
     if "logged_in" not in st.session_state:
