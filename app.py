@@ -79,12 +79,17 @@ def validate_email_api(email):
     api_key = st.secrets["abstractapi"]["api_key"]
     url = f"https://emailvalidation.abstractapi.com/v1/?api_key={api_key}&email={email}"
 
-    response = requests.get(url)
-    data = response.json()
+    try:
+        response = requests.get(url)
+        data = response.json()
 
-    if 'is_valid_format' in data and data['is_valid_format']['value']:
-        return True
-    else:
+        # Check if the email is valid
+        if data.get('is_valid_format', {}).get('value') and data.get('is_smtp_valid', False):
+            return True
+        else:
+            return False
+    except Exception as e:
+        st.error(f"Email validation failed: {e}")
         return False
 
 # Configure Flask-Mail for sending emails
@@ -107,7 +112,8 @@ def generate_confirmation_token(email):
 def send_confirmation_email(user_email):
     mail = configure_email()
     token = generate_confirmation_token(user_email)
-    confirm_url = f"https://yourapp.com/confirm/{token}"
+
+    confirm_url = f"https://infolens.streamlit.app/?token={token}"
 
     msg = Message("Confirm Your Email Address", sender=st.secrets["email"]["username"], recipients=[user_email])
     msg.body = f"Hi! Please confirm your email address by clicking this link: {confirm_url}"
@@ -123,7 +129,8 @@ def confirm_email(token):
         email = serializer.loads(token, salt="email-confirm-salt", max_age=3600)  # 1 hour expiry
         db = connect_to_db()
         db["users"].update_one({"email": email}, {"$set": {"confirmed": True}})
-        st.success("Email confirmed successfully!")
+        st.success("Email confirmed successfully! You are now signed in.")
+        st.session_state.logged_in = True  # Automatically log the user in
     except SignatureExpired:
         st.error("The confirmation link has expired.")
     except BadSignature:
@@ -222,8 +229,11 @@ def signup():
     password = st.text_input("Password", type="password")
 
     if st.button("Sign Up", key="signup_button"):
+        # Validate email format before allowing signup
         if not validate_email_api(email):
-            st.error("Please enter a valid email address.")
+            st.session_state.current_page = "Sign Up"
+            st.error("Email is not valid, please use a valid email address.")
+            st.rerun()
         else:
             db = connect_to_db()
             success, message = add_user(db, first_name, email, password)
