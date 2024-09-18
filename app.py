@@ -287,28 +287,22 @@ def login():
     if st.button("Log In", key="login_button"):
         db = connect_to_db()
 
-        # Print email and password for debugging (Do not use in production, for security reasons)
-        print(f"Attempting login for email: {email}")
-
         success, user_name = authenticate_user(db, email, password)
 
-        # Print authentication results
-        print(f"Authentication success: {success}, User name or error: {user_name}")
-
         if success:
+            # Update session state values
             st.session_state["message"] = f"Logged in as {user_name}"
             st.session_state.logged_in = True
+            st.session_state.user_name = user_name
             st.session_state.current_page = "Home"
 
-            # Print session state to verify it's updated correctly
-            print(f"Session state logged_in: {st.session_state['logged_in']}, user_name: {st.session_state['message']}")
+            # Optionally print session state to verify it's updated correctly
+            st.write("Session state after login:", st.session_state)
 
-            st.rerun()
         else:
             st.error(user_name)
+            st.write(f"Login failed, reason: {user_name}")
 
-            # Print error message when authentication fails
-            print(f"Login failed, reason: {user_name}")
 
 
 # Function to make API requests to your Cloud Run API
