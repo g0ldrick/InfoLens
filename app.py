@@ -171,13 +171,16 @@ def profile():
     delete_confirm_button = st.button("Delete Account", disabled=delete_button_disabled)
 
     if delete_confirm_button:
-        db = connect_to_db()
-        users_collection = db["users"]
-        users_collection.delete_one({"email": st.session_state["email"]})
-        
-        st.success("Your account has been deleted.")
-        clear_login_session()
-        st.rerun()
+        if "email" in st.session_state:  # Ensure email exists in session state
+            db = connect_to_db()
+            users_collection = db["users"]
+            users_collection.delete_one({"email": st.session_state["email"]})
+            
+            st.success("Your account has been deleted.")
+            clear_login_session()
+            st.rerun()
+        else:
+            st.error("Unable to delete account. No email found in session.")
 
 # Main app navigation and session state
 def main():
@@ -299,6 +302,7 @@ def login():
             st.session_state["message"] = f"Logged in as {user_name}"
             st.session_state.logged_in = True
             st.session_state.user_name = user_name
+            st.session_state.email = email  # Store email in session state
             st.session_state.current_page = "Profile"  # Change page to Profile or any other logged-in page
 
             # Save cookies
