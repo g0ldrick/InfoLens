@@ -248,7 +248,7 @@ def predict():
             result = make_prediction_via_api(user_input)
             if result == 1:
                 st.write("Response from our classification model indicates that this information is **FALSE**.")
-            elif result was 0:
+            elif result == 0:
                 st.write("Response from our classification model indicates that this information is **TRUE**.")
         else:
             st.warning("Please enter some text before clicking Classify.")
