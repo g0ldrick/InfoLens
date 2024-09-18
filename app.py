@@ -205,6 +205,8 @@ def main():
     if st.session_state.logged_in:
         if st.sidebar.button("Profile", key="profile_button_sidebar"):
             st.session_state.current_page = "Profile"
+        if st.sidebar.button("Predict", key="predict_button_sidebar"):  # Added button for Predict page
+            st.session_state.current_page = "Predict"
         if st.sidebar.button("Log Out", key="logout_button_sidebar"):
             clear_login_session()
             st.session_state.current_page = "Home"
