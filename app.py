@@ -129,6 +129,7 @@ def confirm_email(token):
         db["users"].update_one({"email": email}, {"$set": {"confirmed": True}})
         st.success("Email confirmed successfully! You are now signed in.")
         st.session_state.logged_in = True
+        st.session_state.user_name = email  # Save the email in session state
     except SignatureExpired:
         st.error("The confirmation link has expired.")
     except BadSignature:
@@ -188,6 +189,12 @@ def main():
         st.session_state.current_page = "Home"
 
     check_login()
+
+    # Extract token from URL
+    query_params = st.experimental_get_query_params()
+    if "token" in query_params:
+        token = query_params["token"][0]
+        confirm_email(token)  # Call the token validation function
 
     st.sidebar.title("Navigation")
 
