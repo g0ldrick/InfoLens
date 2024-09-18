@@ -3,11 +3,15 @@ from streamlit_lottie import st_lottie
 import requests
 import bcrypt
 from pymongo import MongoClient
+from flask import Flask
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from streamlit_cookies_manager import EncryptedCookieManager
 
-# Create a Cookie Manager
+# Create a Flask app instance
+app = Flask(__name__)
+
+# Configure Streamlit's cookie manager
 cookies = EncryptedCookieManager(password="your_secret_password")  # Replace with your password
 
 if not cookies.ready():
@@ -85,12 +89,13 @@ def validate_email_api(email):
 
 # Configure Flask-Mail for sending emails
 def configure_email():
-    mail = Mail()
-    mail.server = st.secrets["email"]["smtp_server"]
-    mail.port = st.secrets["email"]["smtp_port"]
-    mail.use_tls = True
-    mail.username = st.secrets["email"]["username"]
-    mail.password = st.secrets["email"]["password"]
+    app.config['MAIL_SERVER'] = st.secrets["email"]["smtp_server"]
+    app.config['MAIL_PORT'] = st.secrets["email"]["smtp_port"]
+    app.config['MAIL_USE_TLS'] = True
+    app.config['MAIL_USERNAME'] = st.secrets["email"]["username"]
+    app.config['MAIL_PASSWORD'] = st.secrets["email"]["password"]
+    
+    mail = Mail(app)
     return mail
 
 # Generate confirmation token
@@ -106,7 +111,10 @@ def send_confirmation_email(user_email):
 
     msg = Message("Confirm Your Email Address", sender=st.secrets["email"]["username"], recipients=[user_email])
     msg.body = f"Hi! Please confirm your email address by clicking this link: {confirm_url}"
-    mail.send(msg)
+
+    # Use Flask's application context when sending the email
+    with app.app_context():
+        mail.send(msg)
 
 # Confirm email from token
 def confirm_email(token):
