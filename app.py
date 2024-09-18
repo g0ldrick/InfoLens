@@ -2,9 +2,19 @@
 import streamlit as st
 from streamlit_lottie import st_lottie
 import requests
-from backend import connect_to_db, add_user, authenticate_user, make_prediction
+import bcrypt
+from pymongo import MongoClient
+from streamlit_cookies_manager import EncryptedCookieManager
 
-# Function to load Lottie animations from hosted URL
+# Create a Cookie Manager
+cookies = EncryptedCookieManager(
+    password="your_secret_password",  # You should change this password
+)
+
+if not cookies.ready():
+    st.stop()
+
+# Function to load Lottie animations from a hosted URL
 def load_lottie_url(url: str):
     r = requests.get(url)
     if r.status_code != 200:
@@ -13,11 +23,95 @@ def load_lottie_url(url: str):
 
 lottie_animation = load_lottie_url("https://lottie.host/ad806642-171f-4e41-a64d-40484a01631f/vSiDkHmxzU.json")
 
-# Connect to the MongoDB database
-db = connect_to_db()
+# Connect to MongoDB
+def connect_to_db():
+    username = st.secrets["mongo"]["username"]
+    password = st.secrets["mongo"]["password"]
+    cluster_url = st.secrets["mongo"]["cluster_url"]
+    db_name = st.secrets["mongo"]["db_name"]
 
+    mongo_uri = f"mongodb+srv://{username}:{password}@{cluster_url}/{db_name}?retryWrites=true&w=majority"
+    client = MongoClient(mongo_uri)
+    db = client[db_name]
+    return db
+
+# Hash the password for sign up
+def hash_password(password):
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+# Verify the password during login
+def verify_password(stored_password, provided_password):
+    return bcrypt.checkpw(provided_password.encode('utf-8'), stored_password)
+
+# Add a new user to the database
+def add_user(db, first_name, email, password):
+    users_collection = db["users"]
+    if users_collection.find_one({"email": email}):
+        return False, "An account with this email already exists."
+    
+    new_user = {
+        "name": first_name,
+        "email": email,
+        "password": hash_password(password)
+    }
+    users_collection.insert_one(new_user)
+    return True, "Signed up successfully!"
+
+# Authenticate an existing user
+def authenticate_user(db, email, password):
+    users_collection = db["users"]
+    user = users_collection.find_one({"email": email})
+    
+    if user and verify_password(user["password"], password):
+        return True, user["name"]
+    
+    return False, "Invalid email or password."
+
+# Function to make API requests to your Cloud Run API
+def make_prediction_via_api(text, model="cnn"):
+    api_url = "https://infolens-ml-api-3vvr7n346a-nw.a.run.app/predict"
+    payload = {
+        "text": text,
+        "model": model  # You can change model if needed
+    }
+    try:
+        response = requests.post(api_url, json=payload)
+        response.raise_for_status()
+        result = response.json().get("prediction", "Unknown")
+        return result
+    except requests.exceptions.RequestException as e:
+        return f"Error: {str(e)}"
+
+# Check if user is logged in based on cookies
+def check_login():
+    # Retrieve session state from cookies
+    logged_in = cookies.get("logged_in")
+    user_name = cookies.get("user_name")
+
+    if logged_in == "True":
+        st.session_state.logged_in = True
+        st.session_state.user_name = user_name
+    else:
+        st.session_state.logged_in = False
+
+# Set login session and store in cookies
+def set_login_session(user_name):
+    st.session_state.logged_in = True
+    st.session_state.user_name = user_name
+    cookies["logged_in"] = "True"
+    cookies["user_name"] = user_name
+    cookies.save()
+
+# Clear login session
+def clear_login_session():
+    st.session_state.logged_in = False
+    st.session_state.user_name = ""
+    cookies["logged_in"] = "False"
+    cookies["user_name"] = ""
+    cookies.save()
+
+# Home page content
 def home():
-    '''Home page to display information on how to use and navigate the application to end-user'''
     if "message" in st.session_state and st.session_state["message"]:
         if "logged out" in st.session_state["message"].lower():
             st.error(st.session_state["message"])  # logout message in red
@@ -27,16 +121,15 @@ def home():
 
     st.title("Welcome to InfoLens!")
     st.write("""
-        Welcome to InfoLens, a powerful tool for disinformation detection designed to empower the individual 
-        by helping you to assess the veracity of textual content you may find online. With the now ubiquitous
-        nature of both mis- and disinformation, you should be more skeptical than ever at taking information 
-        you come across online at face value! \n
+        Welcome to InfoLens, a powerful tool for disinformation detection designed to empower individuals 
+        by helping you assess the veracity of textual content you find online. In the era of pervasive
+        misinformation and disinformation, it's important to evaluate the truthfulness of what you read online.\n
     """)
     st_lottie(lottie_animation, height=300, key="disinformation_animation")
-    st.write("""Use the navigation bar on the left to explore different features of the application, sign up
-        for an account and log in if you wish to make predictions on text.""")
+    st.write("""Use the navigation bar on the left to explore different features of the application. 
+        You can sign up for an account or log in to make predictions on textual content.""")
 
-
+# Prediction page
 def predict():
     st.title("Make a Prediction")
 
@@ -44,23 +137,13 @@ def predict():
     user_input = st.text_area("Enter text to analyze", placeholder="Type your text here...")
 
     if st.button("Classify"):
-        if user_input:  # Check if the input is not empty
-            # Call the function to make prediction using the input text
-            result = make_prediction(user_input)
-
-            # Map the result: 0 -> "true", 1 -> "false"
-            if result == 0:
-                prediction = "true"
-            elif result == 1:
-                prediction = "false"
-            else:
-                prediction = "Unknown"  # Add this in case the result is not 0 or 1
-
-            st.write(f"Prediction: {prediction}")
+        if user_input:  # Check if input is not empty
+            result = make_prediction_via_api(user_input)  # Call the API for prediction
+            st.write(f"Prediction: {result}")
         else:
             st.warning("Please enter some text before clicking Classify.")
-    
 
+# Signup page
 def signup():
     st.title("Sign Up")
 
@@ -69,15 +152,17 @@ def signup():
     password = st.text_input("Password", type="password")
 
     if st.button("Sign Up"):
+        db = connect_to_db()
         success, message = add_user(db, first_name, email, password)
         if success:
             st.session_state["message"] = message
-            st.session_state.logged_in = True
+            set_login_session(first_name)  # Set login session for the new user
             st.session_state.current_page = "Home"
             st.rerun()
         else:
             st.error(message)
 
+# Login page
 def login():
     st.title("Log In")
 
@@ -85,51 +170,50 @@ def login():
     password = st.text_input("Password", type="password")
 
     if st.button("Log In"):
-        success, message = authenticate_user(db, email, password)
+        db = connect_to_db()
+        success, user_name = authenticate_user(db, email, password)
         if success:
-            st.session_state["message"] = f"Logged in as {message}"
-            st.session_state.logged_in = True
+            st.session_state["message"] = f"Logged in as {user_name}"
+            set_login_session(user_name)  # Set login session
             st.session_state.current_page = "Home"
             st.rerun()
         else:
-            st.error(message)
+            st.error(user_name)
 
+# Main function to handle navigation and session state
 def main():
-    '''Main method for rendering the current page and handling navigation between pages.'''
-
-    # Initialize session state for logging in
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
 
     if "message" not in st.session_state:
         st.session_state["message"] = ""
 
-    # Setting default session to be the home page.
     if "current_page" not in st.session_state:
         st.session_state.current_page = "Home"
 
-    # Navigation between pages handled here along with persisting sessions based on selected page.
+    # Check login session in cookies
+    check_login()
+
     st.sidebar.title("Navigation")
 
-    if st.sidebar.button("Home", key="home_button"):
+    if st.sidebar.button("Home"):
         st.session_state.current_page = "Home"
 
-    # Only show Predict, Log In, Sign Up when appropriate
     if st.session_state.logged_in:
         if st.sidebar.button("Predict"):
             st.session_state.current_page = "Predict"
-        if st.sidebar.button("Log Out", key="logout_button"):
-            st.session_state.logged_in = False
+        if st.sidebar.button("Log Out"):
+            clear_login_session()  # Clear session on log out
             st.session_state.current_page = "Home"
             st.session_state["message"] = "Logged out successfully!"
             st.rerun()
     else:
-        if st.sidebar.button("Log In", key="login_button_sidebar"):
+        if st.sidebar.button("Log In"):
             st.session_state.current_page = "Log In"
-        if st.sidebar.button("Sign Up", key="signup_button_sidebar"):
+        if st.sidebar.button("Sign Up"):
             st.session_state.current_page = "Sign Up"
 
-    # Display the correct page based on the current session state
+    # Display the appropriate page
     if st.session_state.current_page == "Home":
         home()
     elif st.session_state.current_page == "Predict" and st.session_state.logged_in:
