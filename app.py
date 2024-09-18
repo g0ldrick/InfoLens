@@ -206,10 +206,13 @@ def history():
         predictions_collection = db["predictions"]
         user_predictions = predictions_collection.find({"email": st.session_state["email"]})
 
-        if user_predictions.count() == 0:
+        # Check if there are any predictions by converting the cursor to a list
+        predictions_list = list(user_predictions)
+
+        if len(predictions_list) == 0:
             st.write("You have no prediction history.")
         else:
-            for prediction in user_predictions:
+            for prediction in predictions_list:
                 st.write(f"**Text**: {prediction['text']}")
                 st.write(f"**Model**: {prediction['model']}")
                 st.write(f"**Timestamp**: {prediction['timestamp']}")
