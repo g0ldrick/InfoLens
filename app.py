@@ -7,6 +7,7 @@ from flask import Flask
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from streamlit_cookies_manager import EncryptedCookieManager
+import datetime
 
 # Create a Flask app instance
 app = Flask(__name__)
@@ -182,6 +183,42 @@ def profile():
         else:
             st.error("Unable to delete account. No email found in session.")
 
+# Save prediction to the database
+def save_prediction(user_email, text, model, prediction):
+    db = connect_to_db()
+    predictions_collection = db["predictions"]
+    timestamp = datetime.datetime.now()
+    prediction_data = {
+        "email": user_email,
+        "text": text,
+        "model": model,
+        "timestamp": timestamp,
+        "prediction": prediction
+    }
+    predictions_collection.insert_one(prediction_data)
+
+# History page
+def history():
+    st.title("Your Prediction History")
+
+    if "email" in st.session_state:
+        db = connect_to_db()
+        predictions_collection = db["predictions"]
+        user_predictions = predictions_collection.find({"email": st.session_state["email"]})
+
+        if user_predictions.count() == 0:
+            st.write("You have no prediction history.")
+        else:
+            for prediction in user_predictions:
+                st.write(f"**Text**: {prediction['text']}")
+                st.write(f"**Model**: {prediction['model']}")
+                st.write(f"**Timestamp**: {prediction['timestamp']}")
+                outcome = "True" if prediction['prediction'] == 0 else "False"
+                st.write(f"**Outcome**: {outcome}")
+                st.write("---")
+    else:
+        st.error("Unable to fetch prediction history. No email found in session.")
+
 # Main app navigation and session state
 def main():
     if "logged_in" not in st.session_state:
@@ -213,6 +250,8 @@ def main():
             st.session_state.current_page = "Profile"
         if st.sidebar.button("Predict", key="predict_button_sidebar"):  # Added button for Predict page
             st.session_state.current_page = "Predict"
+        if st.sidebar.button("History", key="history_button_sidebar"):  # Added button for History page
+            st.session_state.current_page = "History"
         if st.sidebar.button("Log Out", key="logout_button_sidebar"):
             clear_login_session()
             st.session_state.current_page = "Home"
@@ -230,6 +269,8 @@ def main():
         predict()
     elif st.session_state.current_page == "Profile" and st.session_state.logged_in:
         profile()
+    elif st.session_state.current_page == "History" and st.session_state.logged_in:
+        history()
     elif st.session_state.current_page == "Log In" and not st.session_state.logged_in:
         login()
     elif st.session_state.current_page == "Sign Up" and not st.session_state.logged_in:
@@ -262,6 +303,8 @@ def predict():
                 st.write("Response from our classification model indicates that this information is **FALSE**.")
             elif result == 0:
                 st.write("Response from our classification model indicates that this information is **TRUE**.")
+            # Save the prediction to the database
+            save_prediction(st.session_state["email"], user_input, selected_model, result)
         else:
             st.warning("Please enter some text before clicking Classify.")
 
