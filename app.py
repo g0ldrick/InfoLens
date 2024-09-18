@@ -188,7 +188,7 @@ def main():
         st.session_state.current_page = "Home"
 
     # Handle the email confirmation token only if it exists
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params  # Updated method
     if "token" in query_params and "token_processed" not in st.session_state:
         token = query_params["token"][0]
         confirm_email(token)  # Call the token validation function
@@ -211,7 +211,7 @@ def main():
             clear_login_session()
             st.session_state.current_page = "Home"
             st.session_state["message"] = "Logged out successfully!"
-            st.rerun()
+            st.experimental_rerun()
     else:
         if st.sidebar.button("Log In", key="login_button_sidebar"):
             st.session_state.current_page = "Log In"
@@ -267,7 +267,7 @@ def signup():
         if not validate_email_api(email):
             st.session_state.current_page = "Sign Up"
             st.error("Email is not valid, please use a valid email address.")
-            st.rerun()
+            st.experimental_rerun()
         else:
             db = connect_to_db()
             success, message = add_user(db, first_name, email, password)
@@ -275,7 +275,7 @@ def signup():
                 send_confirmation_email(email)
                 st.success("Confirmation email sent. Please check your inbox.")
                 st.session_state.current_page = "Home"
-                st.rerun()
+                st.experimental_rerun()
             else:
                 st.error(message)
 
@@ -303,17 +303,10 @@ def login():
             cookies["user_name"] = user_name
             cookies.save()
 
-            # Optionally print session state to verify it's updated correctly
-            st.write("Session state after login:", st.session_state)
-
             # Rerun to ensure the page updates
             st.experimental_rerun()
         else:
             st.error(user_name)
-            st.write(f"Login failed, reason: {user_name}")
-
-
-
 
 # Function to make API requests to your Cloud Run API
 def make_prediction_via_api(text, model="cnn"):
