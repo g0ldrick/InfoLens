@@ -6,3 +6,4 @@ bcrypt
 torch
 joblib
 requests
+flask_mail
