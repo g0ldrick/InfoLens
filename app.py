@@ -169,6 +169,7 @@ def profile():
 
     if st.session_state.get("user_name"):
         st.write(f"Welcome, {st.session_state['user_name']}!")
+        st.write("This is your profile management page, at the moment, all you can do here is delete your account, if you wish!")
     
     st.write("### Delete your account")
     st.warning("Deleting your account will permanently remove all of your data, including your prediction history.")
@@ -309,7 +310,11 @@ def home():
         st.success(st.session_state.confirm_message)
         st.session_state.confirm_message = ""  # Clear the message after displaying
 
-    st.write("This app detects disinformation. Use the navigation bar to sign up or log in.")
+    st.write("InfoLens is a web-based application, designed to aid in the mitigation of disinformation found online.")
+    st.write("At the moment, this application is under development and in somewhat of a pre-alpha stage, however \
+             you are able to sign up securly, verify your email, make predictions on textual data and delete your \
+             account if you so wish.")
+    st.write("Use the navigation menu on the left to move about the app, happy predicting!")
     st_lottie(lottie_animation, height=300, key="disinformation_animation")
 
 
