@@ -327,7 +327,6 @@ def predict():
             st.warning("Please enter some text before clicking Classify.")
 
 # Signup page
-# Signup page
 def signup():
     st.title("Sign Up")
 
@@ -351,6 +350,7 @@ def signup():
                 st.rerun()
             else:
                 st.error(message)
+
 
 
 
