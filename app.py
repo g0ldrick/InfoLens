@@ -87,6 +87,7 @@ def validate_email_api(email):
         response = requests.get(url)
         data = response.json()
 
+        # Validate the email format and SMTP status
         if data.get('is_valid_format', {}).get('value') and data.get('is_smtp_valid', False):
             return True
         else:
@@ -330,9 +331,7 @@ def signup():
 
     if st.button("Sign Up", key="signup_button"):
         if not validate_email_api(email):
-            st.session_state.current_page = "Sign Up"
-            st.error("Email is not valid, please use a valid email address.")
-            st.rerun()
+            st.error("The email provided is invalid. Please provide a valid email address.")
         else:
             db = connect_to_db()
             success, message = add_user(db, first_name, email, password)
