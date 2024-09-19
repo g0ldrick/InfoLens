@@ -322,6 +322,7 @@ def predict():
             st.warning("Please enter some text before clicking Classify.")
 
 # Signup page
+# Signup page
 def signup():
     st.title("Sign Up")
 
@@ -333,6 +334,7 @@ def signup():
         # Perform email validation first
         if not validate_email_api(email):
             st.error("The email provided is invalid. Please provide a valid email address.")
+            return  # Stop further execution if email is invalid
         else:
             # Email is valid, proceed with user creation and sending confirmation email
             db = connect_to_db()
@@ -344,6 +346,7 @@ def signup():
                 st.rerun()
             else:
                 st.error(message)
+
 
 
 # Login page
