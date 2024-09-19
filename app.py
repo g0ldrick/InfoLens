@@ -79,6 +79,7 @@ def authenticate_user(db, email, password):
     return False, "Invalid email or password."
 
 # Email validation using AbstractAPI
+# Email validation using AbstractAPI
 def validate_email_api(email):
     api_key = st.secrets["abstractapi"]["api_key"]
     url = f"https://emailvalidation.abstractapi.com/v1/?api_key={api_key}&email={email}"
@@ -87,14 +88,16 @@ def validate_email_api(email):
         response = requests.get(url)
         data = response.json()
 
-        # Validate the email format and SMTP status
-        if data.get('is_valid_format', {}).get('value') and data.get('is_smtp_valid', False):
+        # Prioritize SMTP validation, ignore format-only validation if SMTP is false
+        if data.get('is_smtp_valid', False):
             return True
         else:
+            st.error(f"Invalid email address: {data.get('email')}")
             return False
     except Exception as e:
         st.error(f"Email validation failed: {e}")
         return False
+
 
 # Configure Flask-Mail for sending emails
 def configure_email():
