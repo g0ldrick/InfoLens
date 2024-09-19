@@ -282,11 +282,13 @@ def main():
 # Home page content
 def home():
     st.title("Welcome to InfoLens!")
-    
-    # Display the confirmation message if it exists
+
+    # Display the confirmation message if it exists and clear it after displaying
     if "confirm_message" in st.session_state and st.session_state.confirm_message:
         st.success(st.session_state.confirm_message)
-    
+        # Clear the message after displaying it
+        st.session_state.confirm_message = ""
+
     st.write("This app detects disinformation. Use the navigation bar to sign up or log in.")
     st_lottie(lottie_animation, height=300, key="disinformation_animation")
 
