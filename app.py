@@ -171,7 +171,7 @@ def profile():
         st.write(f"Welcome, {st.session_state['user_name']}!")
     
     st.write("### Delete your account")
-    st.warning("Deleting your account will permanently remove all of your data.")
+    st.warning("Deleting your account will permanently remove all of your data, including your prediction history.")
 
     confirmation_text = st.text_input("Type 'DELETE' to confirm", "")
     delete_button_disabled = confirmation_text != 'DELETE'
@@ -181,9 +181,15 @@ def profile():
         if "email" in st.session_state:  # Ensure email exists in session state
             db = connect_to_db()
             users_collection = db["users"]
+            predictions_collection = db["predictions"]
+
+            # Delete the user's account
             users_collection.delete_one({"email": st.session_state["email"]})
-            
-            st.session_state.account_deleted_message = "Your account has been deleted."
+
+            # Delete the user's prediction history
+            predictions_collection.delete_many({"email": st.session_state["email"]})
+
+            st.session_state.account_deleted_message = "Your account and prediction history have been deleted."
             clear_login_session()
             st.experimental_rerun()  # Redirect to home after deletion
         else:
@@ -288,6 +294,7 @@ def main():
     elif st.session_state.current_page == "Sign Up" and not st.session_state.logged_in:
         signup()
 
+
 # Home page content
 def home():
     st.title("Welcome to InfoLens!")
@@ -304,6 +311,7 @@ def home():
 
     st.write("This app detects disinformation. Use the navigation bar to sign up or log in.")
     st_lottie(lottie_animation, height=300, key="disinformation_animation")
+
 
 # Prediction page
 def predict():
@@ -325,6 +333,7 @@ def predict():
             save_prediction(st.session_state["email"], user_input, selected_model, result)
         else:
             st.warning("Please enter some text before clicking Classify.")
+
 
 # Signup page
 def signup():
@@ -350,8 +359,6 @@ def signup():
                 st.rerun()
             else:
                 st.error(message)
-
-
 
 
 # Login page
