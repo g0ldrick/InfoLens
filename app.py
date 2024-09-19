@@ -312,10 +312,22 @@ def home():
 
     st.write("InfoLens is a web-based application, designed to aid in the mitigation of disinformation found online.")
     st.write("At the moment, this application is under development and in somewhat of a pre-alpha stage, however \
-             you are able to sign up securly, verify your email, make predictions on textual data and delete your \
+             you are able to sign up securely, verify your email, make predictions on textual data and delete your \
              account if you so wish.")
     st.write("Use the navigation menu on the left to move about the app, happy predicting!")
     st_lottie(lottie_animation, height=300, key="disinformation_animation")
+    st.write("**Techy Stuff**")
+    st.write("For those of you who may be interested in the technical implementation of this application, the front-end is built \
+             using Streamlit, there are various email validation and verification functions built in, with validation solved using \
+             AbstractAPI, and verification links with tokens generated and sent automatically from my personal email address (for now).")
+    st.write("Multiple machine learning classification models were build using scikit learn and tensorflow, with textual embeddings solved \
+             using a pretrained DistilBERT model. These models, including an api, which anyone can post to, were then containerised and \
+             deployed to GCP in a cloud run container (I highly reccommend this solution over AWS or other popular container services).")
+    st.write("Finally MongoDB has been used to store and retrieve any user information, complete with password hashing and following \
+             all the best practises, so don't worry your passwords are safe here! In addition to this, flask has been used in conjunction with streamlit to produce some hacky solutions to some problems \
+             I've had to overcome building this application - anyone looking to build anything more complex than this should probably put\
+             their faith in Django.")
+    st.write("Thanks for checking out my application!")
 
 
 # Prediction page
