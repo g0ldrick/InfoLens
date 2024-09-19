@@ -330,9 +330,11 @@ def signup():
     password = st.text_input("Password", type="password")
 
     if st.button("Sign Up", key="signup_button"):
+        # Perform email validation first
         if not validate_email_api(email):
             st.error("The email provided is invalid. Please provide a valid email address.")
         else:
+            # Email is valid, proceed with user creation and sending confirmation email
             db = connect_to_db()
             success, message = add_user(db, first_name, email, password)
             if success:
@@ -342,6 +344,7 @@ def signup():
                 st.rerun()
             else:
                 st.error(message)
+
 
 # Login page
 def login():
