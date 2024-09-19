@@ -177,9 +177,9 @@ def profile():
             users_collection = db["users"]
             users_collection.delete_one({"email": st.session_state["email"]})
             
-            st.success("Your account has been deleted.")
+            st.session_state.account_deleted_message = "Your account has been deleted."
             clear_login_session()
-            st.rerun()
+            st.experimental_rerun()  # Redirect to home after deletion
         else:
             st.error("Unable to delete account. No email found in session.")
 
@@ -233,6 +233,9 @@ def main():
     if "current_page" not in st.session_state:
         st.session_state.current_page = "Home"
 
+    # Clear account deleted message upon navigation
+    st.session_state.account_deleted_message = ""
+
     # Handle the email confirmation token only if it exists
     query_params = st.experimental_get_query_params()  # Use the experimental method consistently
     if "token" in query_params and "token_processed" not in st.session_state:
@@ -283,11 +286,15 @@ def main():
 def home():
     st.title("Welcome to InfoLens!")
 
+    # Display the account deleted message if it exists and clear it after displaying
+    if "account_deleted_message" in st.session_state and st.session_state.account_deleted_message:
+        st.success(st.session_state.account_deleted_message)
+        st.session_state.account_deleted_message = ""  # Clear the message after displaying
+
     # Display the confirmation message if it exists and clear it after displaying
     if "confirm_message" in st.session_state and st.session_state.confirm_message:
         st.success(st.session_state.confirm_message)
-        # Clear the message after displaying it
-        st.session_state.confirm_message = ""
+        st.session_state.confirm_message = ""  # Clear the message after displaying
 
     st.write("This app detects disinformation. Use the navigation bar to sign up or log in.")
     st_lottie(lottie_animation, height=300, key="disinformation_animation")
