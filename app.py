@@ -192,7 +192,7 @@ def profile():
 
             st.session_state.account_deleted_message = "Your account and prediction history have been deleted."
             clear_login_session()
-            st.experimental_rerun()  # Redirect to home after deletion
+            st.rerun()  # Redirect to home after deletion
         else:
             st.error("Unable to delete account. No email found in session.")
 
