@@ -112,7 +112,7 @@ def configure_email():
 
 
 def generate_confirmation_token(email):
-    serializer = URLSafeTimedSerializer(st.secrets["app-secrets"]["secret_key"])  # Using the secret key
+    serializer = URLSafeTimedSerializer(st.secrets["app-secrets"]["secret_key"])
     return serializer.dumps(email, salt="email-confirm-salt")
 
 
@@ -360,12 +360,12 @@ def signup():
     password = st.text_input("Password", type="password")
 
     if st.button("Sign Up", key="signup_button"):
-        # Perform email validation first
+        
         if not validate_email_api(email):
             st.error("The email provided is invalid. Please provide a valid email address.")
-            return  # Stop further execution if email is invalid
+            return 
         else:
-            # Email is valid, proceed with user creation and sending confirmation email
+            
             db = connect_to_db()
             success, message = add_user(db, first_name, email, password)
             if success:
