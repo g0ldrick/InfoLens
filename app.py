@@ -9,16 +9,16 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from streamlit_cookies_manager import EncryptedCookieManager
 import datetime
 
-# Create a Flask app instance
+
 app = Flask(__name__)
 
-# Configure Streamlit's cookie manager
+
 cookies = EncryptedCookieManager(password=st.secrets["app-secrets"]["secret_password"])
 
 if not cookies.ready():
     st.stop()
 
-# Function to load Lottie animations from hosted URL
+
 def load_lottie_url(url: str):
     r = requests.get(url)
     if r.status_code != 200:
@@ -27,7 +27,7 @@ def load_lottie_url(url: str):
 
 lottie_animation = load_lottie_url("https://lottie.host/ad806642-171f-4e41-a64d-40484a01631f/vSiDkHmxzU.json")
 
-# Connect to MongoDB
+
 def connect_to_db():
     username = st.secrets["mongo"]["username"]
     password = st.secrets["mongo"]["password"]
@@ -39,15 +39,15 @@ def connect_to_db():
     db = client[db_name]
     return db
 
-# Hash the password for sign up
+
 def hash_password(password):
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
-# Verify the password during login
+
 def verify_password(stored_password, provided_password):
     return bcrypt.checkpw(provided_password.encode('utf-8'), stored_password)
 
-# Add a new user to the database
+
 def add_user(db, first_name, email, password):
     users_collection = db["users"]
     if users_collection.find_one({"email": email}):
@@ -57,12 +57,12 @@ def add_user(db, first_name, email, password):
         "name": first_name,
         "email": email,
         "password": hash_password(password),
-        "confirmed": False  # Email confirmation status
+        "confirmed": False 
     }
     users_collection.insert_one(new_user)
     return True, "Signed up successfully! Please confirm your email."
 
-# Authenticate an existing user
+
 def authenticate_user(db, email, password):
     users_collection = db["users"]
     user = users_collection.find_one({"email": email})
@@ -78,9 +78,7 @@ def authenticate_user(db, email, password):
     
     return False, "Invalid email or password."
 
-# Email validation using AbstractAPI
-# Email validation using AbstractAPI
-# Email validation using AbstractAPI
+
 def validate_email_api(email):
     api_key = st.secrets["abstractapi"]["api_key"]
     url = f"https://emailvalidation.abstractapi.com/v1/?api_key={api_key}&email={email}"
@@ -89,7 +87,7 @@ def validate_email_api(email):
         response = requests.get(url)
         data = response.json()
 
-        # Prioritize 'deliverability', 'is_smtp_valid', and 'is_mx_found'
+        
         if (data.get('deliverability') == 'DELIVERABLE' and
             data.get('is_smtp_valid', {}).get('value') and 
             data.get('is_mx_found', {}).get('value')):
@@ -101,7 +99,7 @@ def validate_email_api(email):
         st.error(f"Email validation failed: {e}")
         return False
 
-# Configure Flask-Mail for sending emails
+
 def configure_email():
     app.config['MAIL_SERVER'] = st.secrets["email"]["smtp_server"]
     app.config['MAIL_PORT'] = st.secrets["email"]["smtp_port"]
@@ -112,12 +110,12 @@ def configure_email():
     mail = Mail(app)
     return mail
 
-# Generate confirmation token
+
 def generate_confirmation_token(email):
     serializer = URLSafeTimedSerializer(st.secrets["app-secrets"]["secret_key"])  # Using the secret key
     return serializer.dumps(email, salt="email-confirm-salt")
 
-# Send confirmation email
+
 def send_confirmation_email(user_email):
     mail = configure_email()
     token = generate_confirmation_token(user_email)
@@ -130,7 +128,7 @@ def send_confirmation_email(user_email):
     with app.app_context():
         mail.send(msg)
 
-# Confirm email from token
+
 def confirm_email(token):
     try:
         serializer = URLSafeTimedSerializer(st.secrets["app-secrets"]["secret_key"])
@@ -143,7 +141,7 @@ def confirm_email(token):
     except BadSignature:
         st.error("Invalid confirmation link.")
 
-# Check if user is logged in based on cookies
+
 def check_login():
     logged_in = cookies.get("logged_in")
     user_name = cookies.get("user_name")
@@ -154,16 +152,16 @@ def check_login():
     else:
         st.session_state.logged_in = False
 
-# Clear login session and cookies on logout
+
 def clear_login_session():
     st.session_state.logged_in = False
     st.session_state.user_name = ""
-    st.session_state.confirm_message = ""  # Clear confirmation message
+    st.session_state.confirm_message = ""  
     cookies["logged_in"] = "False"
     cookies["user_name"] = ""
     cookies.save()
 
-# Profile page with Delete Account button
+
 def profile():
     st.title("Profile")
 
@@ -179,24 +177,24 @@ def profile():
     delete_confirm_button = st.button("Delete Account", disabled=delete_button_disabled)
 
     if delete_confirm_button:
-        if "email" in st.session_state:  # Ensure email exists in session state
+        if "email" in st.session_state: 
             db = connect_to_db()
             users_collection = db["users"]
             predictions_collection = db["predictions"]
 
-            # Delete the user's account
+            
             users_collection.delete_one({"email": st.session_state["email"]})
 
-            # Delete the user's prediction history
+           
             predictions_collection.delete_many({"email": st.session_state["email"]})
 
             st.session_state.account_deleted_message = "Your account and prediction history have been deleted."
             clear_login_session()
-            st.rerun()  # Redirect to home after deletion
+            st.rerun()  
         else:
             st.error("Unable to delete account. No email found in session.")
 
-# Save prediction to the database
+
 def save_prediction(user_email, text, model, prediction):
     db = connect_to_db()
     predictions_collection = db["predictions"]
@@ -210,7 +208,7 @@ def save_prediction(user_email, text, model, prediction):
     }
     predictions_collection.insert_one(prediction_data)
 
-# History page
+
 def history():
     st.title("Your Prediction History")
 
@@ -219,7 +217,7 @@ def history():
         predictions_collection = db["predictions"]
         user_predictions = predictions_collection.find({"email": st.session_state["email"]})
 
-        # Check if there are any predictions by converting the cursor to a list
+       
         predictions_list = list(user_predictions)
 
         if len(predictions_list) == 0:
@@ -235,7 +233,7 @@ def history():
     else:
         st.error("Unable to fetch prediction history. No email found in session.")
 
-# Main app navigation and session state
+
 def main():
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
@@ -246,16 +244,15 @@ def main():
     if "current_page" not in st.session_state:
         st.session_state.current_page = "Home"
 
-    # Clear account deleted message upon navigation
+   
     st.session_state.account_deleted_message = ""
 
-    # Handle the email confirmation token only if it exists
-    query_params = st.experimental_get_query_params()  # Use the experimental method consistently
+    query_params = st.experimental_get_query_params()  
     if "token" in query_params and "token_processed" not in st.session_state:
         token = query_params["token"][0]
-        confirm_email(token)  # Call the token validation function
-        st.session_state.token_processed = True  # Ensure the token is processed only once
-        st.experimental_set_query_params()  # Clear the token from the URL after processing
+        confirm_email(token)
+        st.session_state.token_processed = True  
+        st.experimental_set_query_params()
 
     check_login()
 
@@ -267,9 +264,9 @@ def main():
     if st.session_state.logged_in:
         if st.sidebar.button("Profile", key="profile_button_sidebar"):
             st.session_state.current_page = "Profile"
-        if st.sidebar.button("Predict", key="predict_button_sidebar"):  # Added button for Predict page
+        if st.sidebar.button("Predict", key="predict_button_sidebar"):  
             st.session_state.current_page = "Predict"
-        if st.sidebar.button("History", key="history_button_sidebar"):  # Added button for History page
+        if st.sidebar.button("History", key="history_button_sidebar"):  
             st.session_state.current_page = "History"
         if st.sidebar.button("Log Out", key="logout_button_sidebar"):
             clear_login_session()
@@ -300,15 +297,13 @@ def main():
 def home():
     st.title("Welcome to InfoLens!")
 
-    # Display the account deleted message if it exists and clear it after displaying
     if "account_deleted_message" in st.session_state and st.session_state.account_deleted_message:
         st.success(st.session_state.account_deleted_message)
-        st.session_state.account_deleted_message = ""  # Clear the message after displaying
+        st.session_state.account_deleted_message = ""  
 
-    # Display the confirmation message if it exists and clear it after displaying
     if "confirm_message" in st.session_state and st.session_state.confirm_message:
         st.success(st.session_state.confirm_message)
-        st.session_state.confirm_message = ""  # Clear the message after displaying
+        st.session_state.confirm_message = "" 
 
     st.write("InfoLens is a web-based application, designed to aid in the mitigation of disinformation found online.")
     st.write("At the moment, this application is under development and in somewhat of a pre-alpha stage, however \
@@ -340,7 +335,6 @@ def predict():
              now, this is merely a proof-of-concept application.")
     user_input = st.text_area("Enter text to analyze", placeholder="Type your text here...")
     
-    # Dropdown for selecting model
     model_options = ["cnn", "mlp", "xgb", "svm", "random_forest", "knn"]
     selected_model = st.selectbox("Select model", model_options, index=model_options.index("cnn"))
 
@@ -351,13 +345,13 @@ def predict():
                 st.write("Response from our classification model indicates that this information is **FALSE**.")
             elif result == 0:
                 st.write("Response from our classification model indicates that this information is **TRUE**.")
-            # Save the prediction to the database
+            
             save_prediction(st.session_state["email"], user_input, selected_model, result)
         else:
             st.warning("Please enter some text before clicking Classify.")
 
 
-# Signup page
+
 def signup():
     st.title("Sign Up")
 
@@ -383,7 +377,7 @@ def signup():
                 st.error(message)
 
 
-# Login page
+
 def login():
     st.title("Log In")
 
@@ -396,24 +390,20 @@ def login():
         success, user_name = authenticate_user(db, email, password)
 
         if success:
-            # Update session state values
             st.session_state["message"] = f"Logged in as {user_name}"
             st.session_state.logged_in = True
             st.session_state.user_name = user_name
-            st.session_state.email = email  # Store email in session state
-            st.session_state.current_page = "Profile"  # Change page to Profile or any other logged-in page
+            st.session_state.email = email 
+            st.session_state.current_page = "Profile" 
 
-            # Save cookies
             cookies["logged_in"] = "True"
             cookies["user_name"] = user_name
             cookies.save()
 
-            # Rerun to ensure the page updates
             st.rerun()
         else:
             st.error(user_name)
 
-# Function to make API requests to your Cloud Run API
 def make_prediction_via_api(text, model="cnn"):
     api_url = "https://infolens-ml-api-3vvr7n346a-nw.a.run.app/predict"
     payload = {"text": text, "model": model}
