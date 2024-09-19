@@ -321,6 +321,11 @@ def home():
 # Prediction page
 def predict():
     st.title("Make a Prediction")
+    st.write("**Important:** although this application seeks to detect disinformation, building a generalised and accurate predictor \
+             for this purpose without a collosal amount of data is a near impossible task for an indiviudal. This application is under \
+             development and for all purpose and intents information classified here should not be heavily relied upon. Future iterations \
+             of this application will be trained on larger corpuses of textual data and use more advanced classification methods, but for \
+             now, this is merely a proof-of-concept application.")
     user_input = st.text_area("Enter text to analyze", placeholder="Type your text here...")
     
     # Dropdown for selecting model
